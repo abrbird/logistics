@@ -1,0 +1,29 @@
+
+application:
+  name: "logistics"
+  testData: true
+
+database:
+  dbms: "postgres"
+  db: "logistics"
+  host: logistics_db
+#  host: localhost
+  port: 5433
+  user: "postgres"
+  password: "postgres"
+
+kafka:
+  brokers:
+    - host: "localhost"
+      port: 9095
+    - host: "localhost"
+      port: 9097
+    - host: "localhost"
+      port: 9097
+
+  issueOrderTopics:
+    issueOrder: "IssueOrder"
+    removeOrder: "RemoveOrder"
+    markOrderIssued: "MarkOrderIssued"
+    undoIssueOrder: "UndoIssueOrder"
+    confirmIssueOrder: "ConfirmIssueOrder"
