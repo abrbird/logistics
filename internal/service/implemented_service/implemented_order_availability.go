@@ -9,11 +9,9 @@ import (
 type OrderAvailabilityService struct{}
 
 func (o OrderAvailabilityService) Retrieve(ctx context.Context, repository repository.OrderAvailabilityRepository, orderId int64, issuePointId int64) models.OrderAvailabilityRetrieve {
-	//TODO implement me
-	panic("implement me")
+	return repository.Retrieve(ctx, orderId, issuePointId)
 }
 
 func (o OrderAvailabilityService) Update(ctx context.Context, repository repository.OrderAvailabilityRepository, orderAvailability models.OrderAvailability) error {
-	//TODO implement me
-	panic("implement me")
+	return repository.Update(ctx, orderAvailability)
 }

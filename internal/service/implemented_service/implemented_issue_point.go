@@ -14,6 +14,5 @@ func (i IssuePointService) Retrieve(ctx context.Context, repository repository.I
 }
 
 func (i IssuePointService) RetrieveByAddress(ctx context.Context, repository repository.IssuePointRepository, addressId int64) models.IssuePointRetrieve {
-	//TODO implement me
-	panic("implement me")
+	return repository.RetrieveByAddress(ctx, addressId)
 }
