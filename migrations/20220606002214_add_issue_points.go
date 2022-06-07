@@ -12,7 +12,7 @@ func init() {
 func upAddIssuePoints(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 		CREATE TABLE logistics_issue_points (
-		    id bigint PRIMARY KEY,
+		    id serial PRIMARY KEY,
 			address_id bigint NOT NULL UNIQUE ,
 			is_available boolean NOT NULL,
 			CONSTRAINT logistics_issue_points_fk_logistics_addresses

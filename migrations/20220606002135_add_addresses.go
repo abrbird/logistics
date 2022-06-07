@@ -12,7 +12,7 @@ func init() {
 func upAddAddresses(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 		CREATE TABLE logistics_addresses (
-		    id bigint PRIMARY KEY,
+		    id serial PRIMARY KEY,
 			address VARCHAR NOT NULL 
 		);
 	`)
