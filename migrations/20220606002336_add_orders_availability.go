@@ -15,7 +15,7 @@ func upAddOrdersAvailability(tx *sql.Tx) error {
 		    order_id bigint NOT NULL,
 			issue_point_id bigint NOT NULL,
 			status VARCHAR NOT NULL,
-			updated_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL default current_timestamp,
 			PRIMARY KEY (order_id, issue_point_id),
 			CONSTRAINT logistics_orders_availability_fk_logistics_issue_points
 			    FOREIGN KEY(issue_point_id)

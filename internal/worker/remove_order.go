@@ -74,23 +74,13 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 		orderAvailabilityRetrieved := i.service.OrderAvailability().Retrieve(
 			ctx,
 			i.repository.OrderAvailability(),
-			issueOrderMessage.Address.Id,
+			issueOrderMessage.Order.Id,
 			issuePointRetrieved.IssuePoint.Id,
 		)
 
 		if orderAvailabilityRetrieved.Error != nil {
 			log.Printf("no sush Order available on IssuePoint: %v", err)
 			i.RetryRemoveOrder(issueOrderMessage)
-			continue
-		}
-
-		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Issued {
-			log.Printf("order is already issued: %v", err)
-			continue
-		}
-
-		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Moved {
-			log.Printf("order is moved: %v", err)
 			continue
 		}
 
@@ -112,9 +102,20 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 			continue
 		}
 
+		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Issued {
+			log.Printf("order is already issued: %v", err)
+			i.RetryRemoveOrder(issueOrderMessage)
+			continue
+		}
+
+		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Moved {
+			log.Printf("order is moved: %v", err)
+			i.RetryRemoveOrder(issueOrderMessage)
+			continue
+		}
+
 		log.Printf("It is impossible!: %v", err)
 		i.RetryRemoveOrder(issueOrderMessage)
-
 	}
 	return nil
 }
@@ -123,7 +124,7 @@ func (i *RemoveOrderHandler) RetryRemoveOrder(message kafka.IssueOrderMessage) {
 	message.Base.SenderServiceName = i.config.Application.Name
 	message.Base.Attempt += 1
 
-	if message.Base.Attempt > 3 {
+	if message.Base.Attempt > 5 {
 		log.Printf("reached max attempts: %v", message)
 		i.SendUndoIssueOrder(message)
 		return
