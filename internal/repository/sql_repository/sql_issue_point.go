@@ -34,7 +34,7 @@ func (S SQLIssuePointRepository) RetrieveByAddress(ctx context.Context, addressI
 		&issuePointRecord.AddressId,
 		&issuePointRecord.IsAvailable,
 	); err != nil {
-		return models.IssuePointRetrieve{IssuePoint: nil, Error: models.NotFoundError}
+		return models.IssuePointRetrieve{IssuePoint: nil, Error: models.NotFoundError(err)}
 	}
 	return models.IssuePointRetrieve{IssuePoint: issuePointRecord, Error: nil}
 }

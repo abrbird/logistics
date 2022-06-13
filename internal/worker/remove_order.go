@@ -30,12 +30,6 @@ func (i *RemoveOrderHandler) Cleanup(sarama.ConsumerGroupSession) error {
 func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
 
-		log.Printf("consumer %s: -> %s: %v",
-			i.config.Application.Name,
-			i.config.Kafka.IssueOrderTopics.RemoveOrder,
-			msg.Value,
-		)
-
 		if msg.Topic != i.config.Kafka.IssueOrderTopics.RemoveOrder {
 			log.Printf(
 				"topic names does not match: expected - %s, got %s\n",
@@ -52,6 +46,12 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 			continue
 		}
 
+		log.Printf("consumer %s: -> %s: %v",
+			i.config.Application.Name,
+			i.config.Kafka.IssueOrderTopics.RemoveOrder,
+			issueOrderMessage,
+		)
+
 		ctx := context.Background()
 		issuePointRetrieved := i.service.IssuePoint().RetrieveByAddress(
 			ctx,
@@ -60,7 +60,7 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 		)
 
 		if issuePointRetrieved.Error != nil {
-			log.Printf("no sush IssuePoint: %v", err)
+			log.Printf("no such IssuePoint: %v", err)
 			i.RetryRemoveOrder(issueOrderMessage)
 			continue
 		}
@@ -79,7 +79,7 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 		)
 
 		if orderAvailabilityRetrieved.Error != nil {
-			log.Printf("no sush Order available on IssuePoint: %v", err)
+			log.Printf("no such Order available on IssuePoint: %v", err)
 			i.RetryRemoveOrder(issueOrderMessage)
 			continue
 		}
@@ -99,12 +99,28 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 			}
 
 			i.SendMarkOrderIssued(issueOrderMessage)
+
+			log.Printf(
+				"consumer %s: -> %s: %v",
+				i.config.Application.Name,
+				i.config.Kafka.IssueOrderTopics.MarkOrderIssued,
+				issueOrderMessage,
+			)
+
 			continue
 		}
 
 		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Issued {
 			log.Printf("order is already issued: %v", err)
-			i.RetryRemoveOrder(issueOrderMessage)
+			i.SendMarkOrderIssued(issueOrderMessage)
+
+			log.Printf(
+				"consumer %s: -> %s: %v",
+				i.config.Application.Name,
+				i.config.Kafka.IssueOrderTopics.MarkOrderIssued,
+				issueOrderMessage,
+			)
+
 			continue
 		}
 
@@ -141,7 +157,7 @@ func (i *RemoveOrderHandler) RetryRemoveOrder(message kafka.IssueOrderMessage) {
 		return
 	}
 
-	log.Printf("consumer %s: %v -> %v", i.config.Application.Name, part, offs)
+	log.Printf("consumer %s: sent %v -> %v", i.config.Application.Name, part, offs)
 	return
 }
 
@@ -159,7 +175,7 @@ func (i *RemoveOrderHandler) SendUndoIssueOrder(message kafka.IssueOrderMessage)
 		return
 	}
 
-	log.Printf("consumer %s: %v -> %v", i.config.Application.Name, part, offs)
+	log.Printf("consumer %s: sent %v -> %v", i.config.Application.Name, part, offs)
 	return
 }
 
@@ -177,6 +193,6 @@ func (i *RemoveOrderHandler) SendMarkOrderIssued(message kafka.IssueOrderMessage
 		return
 	}
 
-	log.Printf("consumer %s: %v -> %v", i.config.Application.Name, part, offs)
+	log.Printf("consumer %s: sent %v -> %v", i.config.Application.Name, part, offs)
 	return
 }

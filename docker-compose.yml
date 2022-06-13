@@ -2,11 +2,13 @@ version: "3.3"
 
 services:
   logistics_db:
-#    container_name: logistics_db
+    container_name: logistics_db
     hostname: logistics_db
     image: postgres:13.3
     restart: always
     user: root
+    networks:
+      - kafka-net
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -17,16 +19,24 @@ services:
       - "5433:5432"
 
   logistics_db_migrations:
-#    container_name: logistics_db_migrations
+    container_name: logistics_db_migrations
     build: ./
     command: /bin/sh -c "/usr/local/bin/goose postgres up -dir ./migrations"
+    networks:
+      - kafka-net
     depends_on:
       - logistics_db
 
   logistics_service:
-#    container_name: logistics_service
+    container_name: logistics_service
     build: ./
     command: /bin/sh -c "/usr/local/bin/logistics"
+    networks:
+      - kafka-net
     depends_on:
       - logistics_db
       - logistics_db_migrations
+
+networks:
+  kafka-net:
+    driver: bridge

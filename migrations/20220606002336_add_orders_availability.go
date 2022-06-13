@@ -21,6 +21,17 @@ func upAddOrdersAvailability(tx *sql.Tx) error {
 			    FOREIGN KEY(issue_point_id)
 			        REFERENCES logistics_issue_points(id) ON DELETE CASCADE
 		);
+		CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+		RETURNS TRIGGER AS $$
+		BEGIN
+		  NEW.updated_at = NOW();
+		  RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql;
+		CREATE TRIGGER set_timestamp
+		BEFORE UPDATE ON logistics_orders_availability
+		FOR EACH ROW
+		EXECUTE PROCEDURE trigger_set_timestamp();
 	`)
 	if err != nil {
 		return err

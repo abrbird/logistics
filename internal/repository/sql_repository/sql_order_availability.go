@@ -30,7 +30,7 @@ func (S SQLOrderAvailabilityRepository) Retrieve(ctx context.Context, orderId in
 		&orderAvailability.IssuePointId,
 		&orderAvailability.Status,
 	); err != nil {
-		return models.OrderAvailabilityRetrieve{OrderAvailability: nil, Error: models.NotFoundError}
+		return models.OrderAvailabilityRetrieve{OrderAvailability: nil, Error: models.NotFoundError(err)}
 	}
 	return models.OrderAvailabilityRetrieve{OrderAvailability: orderAvailability, Error: nil}
 }
@@ -38,8 +38,9 @@ func (S SQLOrderAvailabilityRepository) Retrieve(ctx context.Context, orderId in
 func (S SQLOrderAvailabilityRepository) Update(ctx context.Context, orderAvailability models.OrderAvailability) error {
 	const query = `
 		UPDATE logistics_orders_availability
-		SET (status) = ($3)
+		SET status = $3
 		WHERE order_id = $1 AND issue_point_id = $2
+		RETURNING order_id
 	`
 
 	err := S.store.dbConnectionPool.QueryRow(
@@ -48,9 +49,9 @@ func (S SQLOrderAvailabilityRepository) Update(ctx context.Context, orderAvailab
 		orderAvailability.OrderId,
 		orderAvailability.IssuePointId,
 		orderAvailability.Status,
-	)
+	).Scan(&orderAvailability.OrderId)
 	if err != nil {
-		return models.NotFoundError
+		return models.NotFoundError(err)
 	}
 	return nil
 }
