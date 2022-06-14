@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/Shopify/sarama"
+	"github.com/pkg/errors"
 	cnfg "gitlab.ozon.dev/zBlur/homework-3/logistics/config"
 	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/broker/kafka"
 	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/models"
@@ -29,6 +30,7 @@ func (i *RemoveOrderHandler) Cleanup(sarama.ConsumerGroupSession) error {
 
 func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
+		ctx := context.Background()
 
 		if msg.Topic != i.config.Kafka.IssueOrderTopics.RemoveOrder {
 			log.Printf(
@@ -46,153 +48,125 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 			continue
 		}
 
-		log.Printf("consumer %s: -> %s: %v",
+		log.Printf("consumer %s: <- %s: %v",
 			i.config.Application.Name,
 			i.config.Kafka.IssueOrderTopics.RemoveOrder,
 			issueOrderMessage,
 		)
 
-		ctx := context.Background()
-		issuePointRetrieved := i.service.IssuePoint().RetrieveByAddress(
-			ctx,
-			i.repository.IssuePoint(),
-			issueOrderMessage.Address.Id,
-		)
-
-		if issuePointRetrieved.Error != nil {
-			log.Printf("no such IssuePoint: %v", err)
-			i.RetryRemoveOrder(issueOrderMessage)
-			continue
-		}
-
-		if !issuePointRetrieved.IssuePoint.IsAvailable {
-			log.Printf("IssuePoint is unavailable: %v", err)
-			i.RetryRemoveOrder(issueOrderMessage)
-			continue
-		}
-
-		orderAvailabilityRetrieved := i.service.OrderAvailability().Retrieve(
+		record := i.service.OrderAvailability().RemoveOrder(
 			ctx,
 			i.repository.OrderAvailability(),
+			i.repository.IssuePoint(),
 			issueOrderMessage.Order.Id,
-			issuePointRetrieved.IssuePoint.Id,
+			issueOrderMessage.Address.Id,
 		)
-
-		if orderAvailabilityRetrieved.Error != nil {
-			log.Printf("no such Order available on IssuePoint: %v", err)
-			i.RetryRemoveOrder(issueOrderMessage)
-			continue
-		}
-
-		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Available {
-			orderAvailabilityRetrieved.OrderAvailability.Status = models.Issued
-
-			err = i.service.OrderAvailability().Update(
-				ctx,
-				i.repository.OrderAvailability(),
-				*orderAvailabilityRetrieved.OrderAvailability,
-			)
-			if err != nil {
-				log.Printf("can not update OrderAvailabilty: %v", err)
-				i.RetryRemoveOrder(issueOrderMessage)
-				continue
+		if record.Error != nil {
+			if errors.Is(record.Error, models.RetryError) {
+				err = i.RetryRemoveOrder(issueOrderMessage)
+				if err != nil {
+					err = i.SendUndoIssueOrder(issueOrderMessage)
+					if err != nil {
+						log.Println(err)
+					} else {
+						log.Printf(
+							"consumer %s: -> %s: %v",
+							i.config.Application.Name,
+							i.config.Kafka.IssueOrderTopics.UndoIssueOrder,
+							issueOrderMessage,
+						)
+					}
+				} else {
+					log.Printf(
+						"consumer %s: -> %s: %v",
+						i.config.Application.Name,
+						i.config.Kafka.IssueOrderTopics.RemoveOrder,
+						issueOrderMessage,
+					)
+				}
+			} else {
+				err = i.SendUndoIssueOrder(issueOrderMessage)
+				if err != nil {
+					log.Println(err)
+				} else {
+					log.Printf(
+						"consumer %s: -> %s: %v",
+						i.config.Application.Name,
+						i.config.Kafka.IssueOrderTopics.UndoIssueOrder,
+						issueOrderMessage,
+					)
+				}
 			}
+			continue
+		}
 
-			i.SendMarkOrderIssued(issueOrderMessage)
-
+		err = i.SendMarkOrderIssued(issueOrderMessage)
+		if err != nil {
+			log.Println(err)
+		} else {
 			log.Printf(
 				"consumer %s: -> %s: %v",
 				i.config.Application.Name,
 				i.config.Kafka.IssueOrderTopics.MarkOrderIssued,
 				issueOrderMessage,
 			)
-
-			continue
 		}
-
-		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Issued {
-			log.Printf("order is already issued: %v", err)
-			i.SendMarkOrderIssued(issueOrderMessage)
-
-			log.Printf(
-				"consumer %s: -> %s: %v",
-				i.config.Application.Name,
-				i.config.Kafka.IssueOrderTopics.MarkOrderIssued,
-				issueOrderMessage,
-			)
-
-			continue
-		}
-
-		if orderAvailabilityRetrieved.OrderAvailability.Status == models.Moved {
-			log.Printf("order is moved: %v", err)
-			i.RetryRemoveOrder(issueOrderMessage)
-			continue
-		}
-
-		log.Printf("It is impossible!: %v", err)
-		i.RetryRemoveOrder(issueOrderMessage)
 	}
 	return nil
 }
 
-func (i *RemoveOrderHandler) RetryRemoveOrder(message kafka.IssueOrderMessage) {
+func (i *RemoveOrderHandler) RetryRemoveOrder(message kafka.IssueOrderMessage) error {
 	message.Base.SenderServiceName = i.config.Application.Name
 	message.Base.Attempt += 1
 
 	if message.Base.Attempt > 5 {
-		log.Printf("reached max attempts: %v", message)
-		i.SendUndoIssueOrder(message)
-		return
+		return models.NewMaxAttemptsError(nil)
 	}
 
 	part, offs, kerr, err := kafka.SendMessage(i.producer, i.config.Kafka.IssueOrderTopics.RemoveOrder, message)
 	if err != nil {
-		log.Printf("can not send message: %v", err)
-		return
+		return models.BrokerSendError(err)
 	}
 
 	if kerr != nil {
-		log.Printf("can not send message: %v", kerr)
-		return
+		return models.BrokerSendError(err)
 	}
 
-	log.Printf("consumer %s: sent %v -> %v", i.config.Application.Name, part, offs)
-	return
+	_ = part
+	_ = offs
+
+	return nil
 }
 
-func (i *RemoveOrderHandler) SendUndoIssueOrder(message kafka.IssueOrderMessage) {
+func (i *RemoveOrderHandler) SendUndoIssueOrder(message kafka.IssueOrderMessage) error {
 	message.Base.SenderServiceName = i.config.Application.Name
 
 	part, offs, kerr, err := kafka.SendMessage(i.producer, i.config.Kafka.IssueOrderTopics.UndoIssueOrder, message)
 	if err != nil {
-		log.Printf("can not send message: %v", err)
-		return
+		return models.BrokerSendError(err)
 	}
 
 	if kerr != nil {
-		log.Printf("can not send message: %v", kerr)
-		return
+		return models.BrokerSendError(err)
 	}
-
-	log.Printf("consumer %s: sent %v -> %v", i.config.Application.Name, part, offs)
-	return
+	_ = part
+	_ = offs
+	return nil
 }
 
-func (i *RemoveOrderHandler) SendMarkOrderIssued(message kafka.IssueOrderMessage) {
+func (i *RemoveOrderHandler) SendMarkOrderIssued(message kafka.IssueOrderMessage) error {
 	message.Base.SenderServiceName = i.config.Application.Name
 
 	part, offs, kerr, err := kafka.SendMessage(i.producer, i.config.Kafka.IssueOrderTopics.MarkOrderIssued, message)
 	if err != nil {
-		log.Printf("can not send message: %v", err)
-		return
+		return models.BrokerSendError(err)
 	}
 
 	if kerr != nil {
-		log.Printf("can not send message: %v", kerr)
-		return
+		return models.BrokerSendError(err)
 	}
+	_ = part
+	_ = offs
 
-	log.Printf("consumer %s: sent %v -> %v", i.config.Application.Name, part, offs)
-	return
+	return nil
 }

@@ -2,7 +2,7 @@ package models
 
 type Address struct {
 	Id      int64
-	address string
+	Address string
 }
 
 type AddressRetrieve struct {

@@ -34,8 +34,19 @@ services:
     networks:
       - kafka-net
     depends_on:
+      - redis
       - logistics_db
       - logistics_db_migrations
+
+  redis:
+    image: 'bitnami/redis:latest'
+    restart: always
+    ports:
+      - '6380:6379'
+    environment:
+      - REDIS_PASSWORD=redis_pass
+    networks:
+      - kafka-net
 
 networks:
   kafka-net:

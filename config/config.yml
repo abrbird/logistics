@@ -3,6 +3,17 @@ application:
   name: "logistics"
   testData: true
 
+cache:
+  redis:
+    host: 172.17.0.1
+    port: 6380
+    password: redis_pass
+
+tracing:
+  jaeger:
+    host: 172.17.0.1
+    port: 6831
+
 database:
   dbms: "postgres"
   db: "logistics"
