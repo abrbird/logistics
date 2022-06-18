@@ -23,6 +23,12 @@ database:
   user: "postgres"
   password: "postgres"
 
+  shards:
+    - host: 172.17.0.1
+      port: 5451
+    - host: 172.17.0.1
+      port: 5452
+
 kafka:
   brokers:
     - host: "172.17.0.1"
