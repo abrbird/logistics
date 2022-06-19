@@ -95,7 +95,8 @@ func (o OrderAvailabilityService) RemoveOrder(
 			*orderAvailabilityRetrieved.OrderAvailability,
 		)
 		if err != nil {
-			retryError := models.NewRetryError(err)
+			//retryError := models.NewRetryError(err)
+			retryError := models.NewRetryError(nil)
 			orderAvailabilityRetrieved.Error = retryError
 			return orderAvailabilityRetrieved
 		}
