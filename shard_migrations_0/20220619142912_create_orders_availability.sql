@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE EXTENSION IF NOT EXISTS postgres_fdw;
-CREATE TABLE logistics_orders_availability (
+CREATE TABLE public.logistics_orders_availability_shard_0 (
                                                order_id bigint NOT NULL,
                                                issue_point_id bigint NOT NULL,
                                                status VARCHAR NOT NULL,
@@ -15,12 +15,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER set_timestamp
-    BEFORE UPDATE ON logistics_orders_availability
+    BEFORE UPDATE ON public.logistics_orders_availability_shard_0
     FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE logistics_orders_availability;
+DROP TABLE public.logistics_orders_availability_shard_0;
 -- +goose StatementEnd

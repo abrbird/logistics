@@ -47,7 +47,7 @@ func upAddOrdersAvailability(tx *sql.Tx) error {
 	shardTableCreationF := `
 		CREATE FOREIGN TABLE IF NOT EXISTS public.%s
 		PARTITION OF public.%s
-		FOR VALUES WITH with (modulus %d, remainder %d) 
+		FOR VALUES WITH (modulus %d, remainder %d) 
 		server %s;
 	`
 
@@ -79,7 +79,7 @@ func upAddOrdersAvailability(tx *sql.Tx) error {
 				shardTableName,
 				TableName,
 				len(cfg.Database.Shards),
-				len(cfg.Database.Shards)-1,
+				i,
 				shardServerName,
 			),
 		)
@@ -89,7 +89,6 @@ func upAddOrdersAvailability(tx *sql.Tx) error {
 	)
 
 	query := strings.Join(queryList, "")
-	fmt.Println(query)
 
 	_, err = tx.Exec(query)
 	if err != nil {
