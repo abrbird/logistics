@@ -89,6 +89,7 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 					)
 				}
 			} else {
+				i.metrics.Error()
 				err = i.SendUndoIssueOrder(issueOrderMessage)
 				if err != nil {
 					i.metrics.KafkaError()
