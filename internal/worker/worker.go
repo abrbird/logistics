@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Shopify/sarama"
+	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/metrics"
 	"log"
 	"time"
 
@@ -15,11 +16,14 @@ import (
 
 type LogisticsWorker struct {
 	config              *cnfg.Config
+	repository          rpstr.Repository
+	service             srvc.Service
+	metrics             metrics.Metrics
 	producer            sarama.SyncProducer
 	removeOrderConsumer *RemoveOrderHandler
 }
 
-func New(cfg *cnfg.Config, repository rpstr.Repository, service srvc.Service) (*LogisticsWorker, error) {
+func New(cfg *cnfg.Config, repository rpstr.Repository, service srvc.Service, metrics metrics.Metrics) (*LogisticsWorker, error) {
 
 	brokerConfig := kafka.NewConfig()
 	producer, err := kafka.NewSyncProducer(cfg.Kafka.Brokers.String(), brokerConfig)
@@ -28,12 +32,16 @@ func New(cfg *cnfg.Config, repository rpstr.Repository, service srvc.Service) (*
 	}
 
 	worker := &LogisticsWorker{
-		config:   cfg,
-		producer: producer,
+		config:     cfg,
+		repository: repository,
+		service:    service,
+		metrics:    metrics,
+		producer:   producer,
 		removeOrderConsumer: &RemoveOrderHandler{
 			producer:   producer,
 			repository: repository,
 			service:    service,
+			metrics:    metrics,
 			config:     cfg,
 		},
 	}

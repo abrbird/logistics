@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	cnfg "gitlab.ozon.dev/zBlur/homework-3/logistics/config"
 	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/broker/kafka"
+	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/metrics"
 	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/models"
 	rpstr "gitlab.ozon.dev/zBlur/homework-3/logistics/internal/repository"
 	srvc "gitlab.ozon.dev/zBlur/homework-3/logistics/internal/service"
@@ -17,6 +18,7 @@ type RemoveOrderHandler struct {
 	producer   sarama.SyncProducer
 	repository rpstr.Repository
 	service    srvc.Service
+	metrics    metrics.Metrics
 	config     *cnfg.Config
 }
 
@@ -44,6 +46,7 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 		var issueOrderMessage kafka.IssueOrderMessage
 		err := json.Unmarshal(msg.Value, &issueOrderMessage)
 		if err != nil {
+			i.metrics.Error()
 			log.Print("Unmarshall failed: value=%v, err=%v", string(msg.Value), err)
 			continue
 		}
@@ -67,6 +70,7 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 				if err != nil {
 					err = i.SendUndoIssueOrder(issueOrderMessage)
 					if err != nil {
+						i.metrics.KafkaError()
 						log.Println(err)
 					} else {
 						log.Printf(
@@ -87,6 +91,7 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 			} else {
 				err = i.SendUndoIssueOrder(issueOrderMessage)
 				if err != nil {
+					i.metrics.KafkaError()
 					log.Println(err)
 				} else {
 					log.Printf(
@@ -102,6 +107,7 @@ func (i *RemoveOrderHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 
 		err = i.SendMarkOrderIssued(issueOrderMessage)
 		if err != nil {
+			i.metrics.KafkaError()
 			log.Println(err)
 		} else {
 			log.Printf(

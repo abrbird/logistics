@@ -95,9 +95,11 @@ services:
     container_name: logistics_service
     build: ./
     command: /bin/sh -c "/usr/local/bin/logistics"
-    networks:
       - default
       - kafka-net
+    ports:
+      - "8401:8401"
+      - "8501:8501"
     depends_on:
       - redis
       - logistics_db
