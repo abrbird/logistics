@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/Shopify/sarama"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/metrics"
+	"github.com/abrbird/logistics/internal/metrics"
 	"log"
 	"time"
 
-	cnfg "gitlab.ozon.dev/zBlur/homework-3/logistics/config"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/broker/kafka"
-	rpstr "gitlab.ozon.dev/zBlur/homework-3/logistics/internal/repository"
-	srvc "gitlab.ozon.dev/zBlur/homework-3/logistics/internal/service"
+	cnfg "github.com/abrbird/logistics/config"
+	"github.com/abrbird/logistics/internal/broker/kafka"
+	rpstr "github.com/abrbird/logistics/internal/repository"
+	srvc "github.com/abrbird/logistics/internal/service"
 )
 
 type LogisticsWorker struct {

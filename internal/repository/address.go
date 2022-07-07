@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/models"
+	"github.com/abrbird/logistics/internal/models"
 )
 
 type AddressRepository interface {

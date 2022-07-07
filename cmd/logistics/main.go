@@ -4,19 +4,19 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"github.com/abrbird/logistics/internal/cache/redis_cache"
+	"github.com/abrbird/logistics/internal/metrics/prom_metrics"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/cache/redis_cache"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/metrics/prom_metrics"
 	"log"
 	"net/http"
 	"runtime"
 	"strconv"
 
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/config"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/db"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/repository/sql_repository"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/service/implemented_service"
-	wrkr "gitlab.ozon.dev/zBlur/homework-3/logistics/internal/worker"
+	"github.com/abrbird/logistics/config"
+	"github.com/abrbird/logistics/internal/db"
+	"github.com/abrbird/logistics/internal/repository/sql_repository"
+	"github.com/abrbird/logistics/internal/service/implemented_service"
+	wrkr "github.com/abrbird/logistics/internal/worker"
 )
 
 type GoroutinesNum struct{}

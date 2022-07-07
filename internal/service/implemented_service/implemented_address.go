@@ -2,8 +2,8 @@ package implemented_service
 
 import (
 	"context"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/models"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/repository"
+	"github.com/abrbird/logistics/internal/models"
+	"github.com/abrbird/logistics/internal/repository"
 )
 
 type AddressService struct {

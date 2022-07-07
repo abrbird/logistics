@@ -1,4 +1,4 @@
-module gitlab.ozon.dev/zBlur/homework-3/logistics
+module github.com/abrbird/logistics
 
 go 1.18
 

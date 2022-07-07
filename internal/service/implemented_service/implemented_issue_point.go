@@ -2,10 +2,10 @@ package implemented_service
 
 import (
 	"context"
+	"github.com/abrbird/logistics/internal/cache/redis_cache"
+	"github.com/abrbird/logistics/internal/models"
+	"github.com/abrbird/logistics/internal/repository"
 	"github.com/pkg/errors"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/cache/redis_cache"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/models"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/internal/repository"
 )
 
 type IssuePointService struct {

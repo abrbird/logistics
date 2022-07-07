@@ -1,2 +1,2 @@
 ### Logistics service 
-part of https://gitlab.ozon.dev/zBlur/homework-3
+part of https://github.com/abrbird/marketplace-system-design

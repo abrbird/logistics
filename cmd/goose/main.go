@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/abrbird/logistics/config"
+	_ "github.com/abrbird/logistics/migrations"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
-	"gitlab.ozon.dev/zBlur/homework-3/logistics/config"
-	_ "gitlab.ozon.dev/zBlur/homework-3/logistics/migrations"
 )
 
 var (
