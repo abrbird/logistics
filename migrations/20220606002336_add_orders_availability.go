@@ -2,37 +2,95 @@ package migrations
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/pressly/goose/v3"
+	"gitlab.ozon.dev/zBlur/homework-3/logistics/config"
+	"log"
+	"strings"
 )
 
 func init() {
 	goose.AddMigration(upAddOrdersAvailability, downAddOrdersAvailability)
 }
 
+const (
+	TableName        = "logistics_orders_availability"
+	shardServerNameF = "shard_%d"
+	shardTableNameF  = "logistics_orders_availability_shard_%d"
+)
+
 func upAddOrdersAvailability(tx *sql.Tx) error {
-	_, err := tx.Exec(`
-		CREATE TABLE logistics_orders_availability (
-		    order_id bigint NOT NULL,
-			issue_point_id bigint NOT NULL,
-			status VARCHAR NOT NULL,
-			updated_at TIMESTAMP NOT NULL default current_timestamp,
-			PRIMARY KEY (order_id, issue_point_id),
-			CONSTRAINT logistics_orders_availability_fk_logistics_issue_points
-			    FOREIGN KEY(issue_point_id)
-			        REFERENCES logistics_issue_points(id) ON DELETE CASCADE
-		);
-		CREATE OR REPLACE FUNCTION trigger_set_timestamp()
-		RETURNS TRIGGER AS $$
-		BEGIN
-		  NEW.updated_at = NOW();
-		  RETURN NEW;
-		END;
-		$$ LANGUAGE plpgsql;
-		CREATE TRIGGER set_timestamp
-		BEFORE UPDATE ON logistics_orders_availability
-		FOR EACH ROW
-		EXECUTE PROCEDURE trigger_set_timestamp();
-	`)
+	cfg, err := config.ParseConfig("config/config.yml")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mainTableCreation := fmt.Sprintf(`
+		CREATE TABLE public.%s (
+													   order_id bigint NOT NULL,
+													   issue_point_id bigint NOT NULL,
+													   status VARCHAR NOT NULL,
+													   updated_at TIMESTAMP NOT NULL default current_timestamp
+		)
+		PARTITION BY hash (issue_point_id);
+	`, TableName)
+	shardCreationF := `
+		CREATE SERVER IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw
+			OPTIONS (
+				dbname '%s',
+				host '%s',
+				port '%d'
+			);
+		CREATE USER MAPPING IF NOT EXISTS FOR %s SERVER %s 
+			OPTIONS (user '%s', password '%s');
+	`
+	shardTableCreationF := `
+		CREATE FOREIGN TABLE IF NOT EXISTS public.%s
+		PARTITION OF public.%s
+		FOR VALUES WITH (modulus %d, remainder %d) 
+		server %s;
+	`
+
+	queryList := []string{
+		mainTableCreation,
+		`CREATE EXTENSION IF NOT EXISTS postgres_fdw;`,
+		//fmt.Sprintf(`GRANT USAGE ON FOREIGN DATA WRAPPER postgres_fdw to %s;`, cfg.Database.User),
+	}
+
+	for i, shardParam := range cfg.Database.Shards {
+		shardServerName := fmt.Sprintf(shardServerNameF, i)
+		shardTableName := fmt.Sprintf(shardTableNameF, i)
+
+		queryList = append(
+			queryList,
+			fmt.Sprintf(
+				shardCreationF,
+				shardServerName,
+				cfg.Database.DB,
+				shardParam.Host,
+				shardParam.Port,
+				cfg.Database.User,
+				shardServerName,
+				cfg.Database.User,
+				cfg.Database.Password,
+			),
+			fmt.Sprintf(
+				shardTableCreationF,
+				shardTableName,
+				TableName,
+				len(cfg.Database.Shards),
+				i,
+				shardServerName,
+			),
+		)
+	}
+	queryList = append(
+		queryList,
+	)
+
+	query := strings.Join(queryList, "")
+
+	_, err = tx.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -40,7 +98,7 @@ func upAddOrdersAvailability(tx *sql.Tx) error {
 }
 
 func downAddOrdersAvailability(tx *sql.Tx) error {
-	_, err := tx.Exec("DROP TABLE logistics_orders_availability;")
+	_, err := tx.Exec(fmt.Sprintf(`DROP TABLE %s;`, TableName))
 	if err != nil {
 		return err
 	}

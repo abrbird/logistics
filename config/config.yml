@@ -9,6 +9,15 @@ cache:
     port: 6380
     password: redis_pass
 
+monitoring:
+  pprof:
+    host: 0.0.0.0
+    port: 8401
+
+  metrics:
+    host: 0.0.0.0
+    port: 8501
+
 tracing:
   jaeger:
     host: 172.17.0.1
@@ -22,6 +31,12 @@ database:
   port: 5433
   user: "postgres"
   password: "postgres"
+
+  shards:
+    - host: 172.17.0.1
+      port: 5451
+    - host: 172.17.0.1
+      port: 5452
 
 kafka:
   brokers:
